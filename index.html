@@ -1,0 +1,59 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>AutoVendor — Run Agent</title>
+  <style>
+    body{font-family:Inter,system-ui;max-width:760px;margin:40px auto;padding:20px}
+    input,textarea,button{width:100%;padding:10px;margin:6px 0;font-size:16px}
+    #log{white-space:pre-wrap;background:#f7f7f7;padding:12px;border-radius:6px;min-height:120px}
+  </style>
+</head>
+<body>
+  <h1>AutoVendor — Autonomous Supplier Negotiator</h1>
+  <p>Describe what you need (e.g., "50 kg cardboard scrap, Hyderabad, budget ₹15/kg")</p>
+  <textarea id="need" placeholder="What do you want to buy?" rows="3"></textarea>
+  <input id="budget" placeholder="Budget (optional, e.g. ₹800)" />
+  <input id="location" placeholder="Location (optional, e.g. Hyderabad)" />
+  <button id="run">Run Agent</button>
+  <h3>Agent Log</h3>
+  <div id="log">Idle</div>
+
+<script>
+const N8N_WEBHOOK_URL = "https://YOUR_N8N_PUBLIC_URL/webhook/autovendor-main"; // change this
+
+document.getElementById('run').onclick = async () => {
+  const need = document.getElementById('need').value.trim();
+  const budget = document.getElementById('budget').value.trim();
+  const location = document.getElementById('location').value.trim();
+  if(!need){ alert('Enter a request'); return; }
+  document.getElementById('log').textContent = "Agent starting...\n";
+  try {
+    const res = await fetch(N8N_WEBHOOK_URL, {
+      method: 'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({need, budget, location})
+    });
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    // If your n8n returns a single JSON response, skip streaming code — but we try to stream logs.
+    let done=false, full="";
+    while(!done){
+      const {value, done: d} = await reader.read();
+      if(value) full += decoder.decode(value);
+      done = d;
+    }
+    // show final
+    try{
+      const parsed = JSON.parse(full);
+      document.getElementById('log').textContent = JSON.stringify(parsed, null, 2);
+    }catch(e){
+      document.getElementById('log').textContent = full;
+    }
+  } catch (err) {
+    document.getElementById('log').textContent = "Error: " + err.message;
+  }
+};
+</script>
+</body>
+</html>
